@@ -1,0 +1,50 @@
+{
+  "name": "@cole-labs/grabbit-browser",
+  "version": "0.1.0",
+  "description": "Browser automation CLI for Grabbit with HAR recording",
+  "type": "module",
+  "main": "dist/daemon.js",
+  "files": [
+    "dist",
+    "bin",
+    "scripts"
+  ],
+  "bin": {
+    "grabbit-browse": "./bin/grabbit-browse.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:native": "cargo build --release --manifest-path cli/Cargo.toml && node scripts/copy-native.js",
+    "start": "node dist/daemon.js",
+    "dev": "tsx src/daemon.ts",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write 'src/**/*.ts'",
+    "format:check": "prettier --check 'src/**/*.ts'",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "browser",
+    "automation",
+    "headless",
+    "playwright",
+    "cli",
+    "har",
+    "grabbit"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "playwright-core": "^1.57.0",
+    "ws": "^8.19.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/ws": "^8.18.1",
+    "playwright": "^1.57.0",
+    "prettier": "^3.7.4",
+    "tsx": "^4.6.0",
+    "typescript": "^5.3.0",
+    "vitest": "^4.0.16"
+  }
+}

@@ -1,0 +1,17 @@
+# Build artifacts
+dist/
+*.tgz
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# npm publish cache
+.npm-cache/
