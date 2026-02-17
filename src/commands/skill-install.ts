@@ -1,7 +1,7 @@
 import { spawn } from "child_process";
 import path from "path";
 
-const SKILL_REPO = "https://github.com/colebanman/grabbit-skills";
+const SKILL_REPO = "https://github.com/colebanman/grabbit-cli";
 
 export default async function installSkill(): Promise<void> {
   const cwd = process.env.INIT_CWD || process.cwd();
