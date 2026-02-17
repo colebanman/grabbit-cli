@@ -1,10 +1,14 @@
 #!/usr/bin/env node
+import { createRequire } from "module";
 import { program } from "commander";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json") as { version?: string };
 
 program
   .name("grabbit")
   .description("Convert browser interactions into API workflows")
-  .version("0.1.0");
+  .version(pkg.version ?? "0.0.0");
 
 program
   .command("auth")
@@ -38,7 +42,13 @@ program
   .argument("<prompt...>", "Description of the workflow to generate")
   .option("-m, --model <model>", "Model to use for generation")
   .option("-s, --session <name>", "Browser session name")
-  .action(async (prompt: string[], options: { model?: string; session?: string }) => {
+  .option(
+    "--step <text>",
+    "Optional step hint to send with the task (repeatable)",
+    (value: string, prev: string[] = []) => [...prev, value],
+    []
+  )
+  .action(async (prompt: string[], options: { model?: string; session?: string; step?: string[] }) => {
     const { default: save } = await import("./commands/save.js");
     await save(prompt, options);
   });
@@ -57,8 +67,8 @@ const skill = program
   .description("Install Grabbit skill for AI agents");
 
 skill.action(async () => {
-  const { default: skillInstall } = await import("./commands/skill.js");
-  await skillInstall();
+  const { default: installSkill } = await import("./commands/skill-install.js");
+  await installSkill();
 });
 
 skill

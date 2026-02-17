@@ -10,6 +10,23 @@ import { submitTask } from "../lib/api.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
+const MAX_AGENT_STEPS = 20;
+const MAX_STEP_LENGTH = 120;
+
+interface HarLikeEntry {
+  request?: {
+    method?: unknown;
+    url?: unknown;
+  };
+}
+
+export interface ParsedPromptOptions {
+  prompt: string;
+  session?: string;
+  model?: string;
+  agentSteps: string[];
+}
+
 function getGrabbitBrowsePath(): string {
   // 1. Try to find the package using Node's resolution logic (for production/npm)
   try {
@@ -35,13 +52,64 @@ function getGrabbitBrowsePath(): string {
   process.exit(1);
 }
 
-function normalizePromptAndOptions(
+function normalizeStepText(step: string): string {
+  return step.replace(/\s+/g, " ").trim();
+}
+
+function truncateStep(step: string): string {
+  return step.length > MAX_STEP_LENGTH ? `${step.slice(0, MAX_STEP_LENGTH - 3)}...` : step;
+}
+
+function buildHarAgentStep(entry: HarLikeEntry): string | null {
+  const methodRaw = entry.request?.method;
+  const urlRaw = entry.request?.url;
+  if (typeof methodRaw !== "string" || typeof urlRaw !== "string") {
+    return null;
+  }
+
+  let hostAndPath = "";
+  try {
+    const parsed = new URL(urlRaw);
+    hostAndPath = `${parsed.host}${parsed.pathname || "/"}`;
+  } catch {
+    return null;
+  }
+
+  const method = methodRaw.toUpperCase().trim();
+  if (!method || !hostAndPath) {
+    return null;
+  }
+
+  return truncateStep(normalizeStepText(`${method} ${hostAndPath}`));
+}
+
+export function deriveAgentStepsFromHarEntries(entries: HarLikeEntry[]): string[] {
+  const derived: string[] = [];
+
+  for (const entry of entries) {
+    if (derived.length >= MAX_AGENT_STEPS) {
+      break;
+    }
+    const candidate = buildHarAgentStep(entry);
+    if (!candidate) {
+      continue;
+    }
+    derived.push(candidate);
+  }
+
+  return derived;
+}
+
+export function normalizePromptAndOptions(
   promptParts: string[],
-  options: { model?: string; session?: string }
-): { prompt: string; session?: string; model?: string } {
+  options: { model?: string; session?: string; step?: string[] }
+): ParsedPromptOptions {
   const parts = [...promptParts];
   let session = options.session;
   let model = options.model;
+  const agentSteps: string[] = Array.isArray(options.step)
+    ? options.step.map((step) => truncateStep(normalizeStepText(step))).filter(Boolean)
+    : [];
 
   for (let i = 0; i < parts.length; i++) {
     const token = parts[i];
@@ -55,17 +123,27 @@ function normalizePromptAndOptions(
       model = parts[i + 1];
       parts.splice(i, 2);
       i -= 1;
+      continue;
+    }
+    if (token === "--step" && parts[i + 1]) {
+      const normalized = truncateStep(normalizeStepText(parts[i + 1]));
+      if (normalized) {
+        agentSteps.push(normalized);
+      }
+      parts.splice(i, 2);
+      i -= 1;
+      continue;
     }
   }
 
-  return { prompt: parts.join(" ").trim(), session, model };
+  return { prompt: parts.join(" ").trim(), session, model, agentSteps };
 }
 
 export default async function save(
   promptParts: string[],
-  options: { model?: string; session?: string }
+  options: { model?: string; session?: string; step?: string[] }
 ): Promise<void> {
-  const { prompt, session, model } = normalizePromptAndOptions(promptParts, options);
+  const { prompt, session, model, agentSteps: promptAgentSteps } = normalizePromptAndOptions(promptParts, options);
   const config = getConfig();
   const currentSession = getSession();
   const sessionName = session ?? currentSession?.sessionName;
@@ -101,6 +179,7 @@ export default async function save(
 
   // Parse HAR to check entry count and filter large/unnecessary content
   let filteredHar = har;
+  let defaultAgentSteps: string[] = [];
   try {
     const harData = JSON.parse(har);
     const entries = harData.log?.entries ?? [];
@@ -113,10 +192,12 @@ export default async function save(
       process.exit(1);
     }
 
+    defaultAgentSteps = deriveAgentStepsFromHarEntries(entries);
+
     // Strip binary responses (images/fonts/media) but keep full text/json bodies
     // to preserve API context for the agent.
     let filteredCount = 0;
-    
+
     harData.log.entries = entries.map((entry: any) => {
       const mimeType = entry.response?.content?.mimeType || "";
       const isText =
@@ -124,7 +205,7 @@ export default async function save(
         mimeType.includes("text") ||
         mimeType.includes("javascript") ||
         mimeType.includes("xml");
-      
+
       if (!isText) {
         if (entry.response?.content?.text) {
           entry.response.content.text = "(Body removed: binary response)";
@@ -152,10 +233,13 @@ export default async function save(
   const compressedSizeMb = (compressedHar.byteLength / 1024 / 1024).toFixed(2);
   console.log(`Size: ${originalSizeMb} MB -> ${compressedSizeMb} MB`);
 
+  const finalAgentSteps = [...defaultAgentSteps, ...promptAgentSteps].slice(0, MAX_AGENT_STEPS);
+
   try {
     const result = await submitTask(compressedHar, prompt, model, {
       compression: "gzip",
       transport: "multipart",
+      agentSteps: finalAgentSteps.length ? finalAgentSteps : undefined,
     });
 
     console.log(`\nTask submitted: ${result.taskId}`);

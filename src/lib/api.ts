@@ -85,7 +85,11 @@ export async function submitTask(
   harContent: string | Uint8Array,
   prompt: string,
   model?: string,
-  options?: { compression?: "gzip"; transport?: "json" | "multipart" }
+  options?: {
+    compression?: "gzip";
+    transport?: "json" | "multipart";
+    agentSteps?: string[];
+  }
 ): Promise<{ taskId: string; status: string }> {
   const useMultipart =
     options?.transport === "multipart" ||
@@ -117,6 +121,7 @@ export async function submitTask(
     form.append("prompt", prompt);
     if (model) form.append("model", model);
     if (options?.compression) form.append("compression", options.compression);
+    if (options?.agentSteps?.length) form.append("agentSteps", JSON.stringify(options.agentSteps));
 
     return apiRequest("/api/cli/tasks", {
       method: "POST",
@@ -131,6 +136,7 @@ export async function submitTask(
       prompt,
       model,
       compression: options?.compression,
+      agentSteps: options?.agentSteps,
     }),
   });
 }

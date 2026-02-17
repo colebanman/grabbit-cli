@@ -1,6 +1,6 @@
 # Grabbit CLI
 
-Grabbit is a powerful tool designed to turn browser interactions into deterministic API workflows. By capturing network traffic (HAR) and accessibility snapshots from your browsing sessions, Grabbit allows you to generate stable, reproducible API calls for automation, data extraction, and integration tasks.
+Turn browser actions into reusable API workflows. Browse a site, capture what you do, and Grabbit generates stable cURL-ready workflows for automation, data extraction, and integrations.
 
 ## Install
 
@@ -8,141 +8,78 @@ Grabbit is a powerful tool designed to turn browser interactions into determinis
 npm i -g @cole-labs/grabbit
 ```
 
-## Configuration
+## Get started
 
-The CLI can be configured via (in order of priority):
-
-1. **Environment variables** - `GRABBIT_API_URL`, `GRABBIT_TOKEN`
-2. **Config file** - `~/.grabbit/config.json` (auto-created after `grabbit auth`)
-3. **Defaults** - Production API at `https://www.grabbit.dev`
-
-### Environment Variables
+### 1. Sign in (one-time)
 
 ```bash
-# Use local development backend
-export GRABBIT_API_URL=http://localhost:3001
-grabbit auth
-
-# One-time use
-GRABBIT_API_URL=http://localhost:3001 grabbit auth
-```
-
-### Config File
-
-After running `grabbit auth`, your config is stored at `~/.grabbit/config.json`:
-
-```json
-{
-  "token": "your-auth-token",
-  "apiUrl": "https://www.grabbit.dev",
-  "userId": "user_..."
-}
-```
-
-To switch environments, re-run `grabbit auth` or set the `GRABBIT_API_URL` env var.
-
-## Authenticate (one-time)
-
-```bash
-grabbit validate
 grabbit auth
 ```
 
-- `grabbit auth` opens the pairing page in your browser; sign in, then enter the code shown on the page into your terminal.
-- The CLI will use the `GRABBIT_API_URL` environment variable if set, otherwise defaults to production.
+Your browser opens to pair. Sign in, then enter the code from the page into your terminal.
 
-## Capture + Generate (recommended flow)
-
-1) Open a site in a named browser session
+### 2. Open a site and interact
 
 ```bash
-# Headed (recommended for logins / bot protection)
-grabbit browse --headed --session myrun open https://example.com
-
-# Headless
+# Open a page (use --headed if you need to see the browser, e.g. for logins)
 grabbit browse --session myrun open https://example.com
-```
 
-2) Interact as needed (optional, but usually necessary)
-
-```bash
+# Inspect and interact
 grabbit browse --session myrun snapshot
 grabbit browse --session myrun click @e3
-grabbit browse --session myrun fill @e7 "test@example.com"
-grabbit browse --session myrun press Enter
+grabbit browse --session myrun fill @e5 "search term"
 ```
 
-3) Save + submit for workflow generation
+### 3. Save and generate
 
 ```bash
-grabbit save --session myrun "Describe the workflow in detail (see Prompt Tips)."
+grabbit save --session myrun "Describe what you want. Example: Extract product titles. Output: { titles: string[] }"
 ```
 
-4) Poll for completion
+### 4. Check the result
 
 ```bash
 grabbit check <task-id>
 ```
 
-On success, `check` prints:
-- inputs
-- outputs
-- a cURL example (when available)
+When it’s done, you’ll see inputs, outputs, and a cURL example.
 
-## Prompt Tips (be verbose)
+## Prompt tips
 
-The generation backend finds the right requests faster when your prompt includes concrete examples.
+Be specific. Include real examples you saw on the page and the output shape you expect.
 
-- Include expected inputs/outputs *and example values*
-- For static extraction, include a real example string you saw on the site
-- For multi-step flows, include example data for each step (name/address/etc.)
-- Even if user asked for a single value, phrase it so the workflow generalizes
+- **Static data**: "Extract blog titles, e.g. 'Cooking for Beginners'. Output: { titles: string[] }"
+- **Interactive flows**: Describe each step with example data (name, address, etc.)
+- **Generalize**: Even for one value, phrase it so the workflow works for many cases
 
-Examples:
-
-Static:
-```text
-Extract blog post titles from someblogsite.com, e.g., "Cooking for Beginners".
-Output: { titles: string[] }.
-```
-
-Interactive:
-```text
-Checkout an item using its product link. Example: open amazon.com/productxyz, add to cart,
-go to checkout, enter name "John Doe", address "123 Address Way", select standard shipping,
-stop before final confirm. Output: { item_title, order_total }.
-```
-
-Generalize:
-```text
-Get stock price from Yahoo Finance. Input: symbol (e.g., "AAPL"). Output: { price, change, changePct, timestamp }.
-```
-
-## Browser Command Cheat Sheet
+## Browser commands
 
 Run `grabbit browse --help` for the full list. Common commands:
 
-- Navigate: `open`, `back`, `forward`, `reload`, `close`
-- Inspect: `snapshot`, `get text|html|value|attr`, `is visible|enabled|checked`
-- Interact: `click`, `dblclick`, `fill`, `type`, `press`, `select`, `hover`, `focus`
-- Wait: `wait <ms>` or `wait <selector>`
-- Debug: `screenshot`, `console`, `errors`
-- HAR: `har start|stop|export|clear`
+- **Navigate**: `open`, `back`, `forward`, `reload`, `close`
+- **Inspect**: `snapshot`, `get text`, `get html`, `get value`, `is visible`
+- **Interact**: `click`, `fill`, `type`, `press`, `select`, `hover`, `focus`
+- **Wait**: `wait <ms>` or `wait <selector>`
+- **Debug**: `screenshot`, `console`, `errors`
 
-## Sessions
+## Use workflows in AI agents
 
-- Always use `--session <name>` so captures don’t mix.
-- `save` closes the browser session after submitting.
+To add Grabbit as a skill for AI agents (e.g. Cursor, Claude):
+
+```bash
+grabbit skill install
+```
 
 ## Troubleshooting
 
-- **Not authenticated**: run `grabbit auth`, then retry your command.
-- **0 requests recorded**: reload the page and interact, then run `save` again.
+- **Not authenticated**: Run `grabbit auth`, then retry.
+- **No requests recorded**: Reload the page, interact with it, then run `save` again.
+- Always use `--session <name>` so captures stay separate.
+
 ## Credits
 
-Grabbit's browser automation capabilities are powered by a fork of [agent-browser](https://github.com/vercel-labs/agent-browser), which is licensed under the Apache License 2.0. We are grateful to the Vercel team and the original contributors for their excellent work.
+Grabbit’s browser automation is powered by a fork of [agent-browser](https://github.com/vercel-labs/agent-browser), licensed under the Apache License 2.0.
 
 ## License
 
 MIT
-
