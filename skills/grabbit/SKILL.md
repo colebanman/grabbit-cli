@@ -5,68 +5,78 @@ description: "Control the Grabbit CLI to record browser interactions (HAR) and g
 
 # Grabbit CLI
 
-Master the Grabbit CLI to convert browser interactions into stable API workflows.
+Grabbit turns browser actions into reusable API workflows: you browse a site, capture what you do, and Grabbit generates stable cURL-ready workflows for automation, extraction, and integrations.
+
+## Before You Start
+
+**Install** (requires Node.js):
+```bash
+npm i -g @cole-labs/grabbit
+```
+
+**Sessions**: Always use `--session <name>` so captures stay isolated. Without it, multiple runs can mix requests.
 
 ## Core Workflow
 
-1.  **Authenticate**: Ensure you are logged in.
+1.  **Authenticate** (one-time):
     ```bash
     grabbit validate || grabbit auth
     ```
+    `grabbit auth` opens your browser to a pairing page. Sign in, then enter the code shown there into your terminal.
 
-2.  **Capture (Session)**: Always use `--session <name>` for isolation.
+2.  **Capture**:
     ```bash
-    # 1. Start session & Open URL
-    grabbit browse --headed --session <name> open <url>
+    # Open a page (add --headed to see the browser; default is headless/invisible)
+    grabbit browse --session <name> open <url>
+    # Or with visible browser: grabbit browse --headed --session <name> open <url>
 
-    # 2. Inspect & Interact
-    grabbit browse --session <name> snapshot      # Get @e# refs
-    grabbit browse --session <name> click @e1     # Click ref
+    # Inspect the page — snapshot prints @e1, @e2, etc. Use these for clicks/fills
+    grabbit browse --session <name> snapshot
+
+    # Interact using the refs from snapshot
+    grabbit browse --session <name> click @e1
     grabbit browse --session <name> fill @e2 "data"
 
-    # 3. Verify
+    # Optional: screenshot to verify
     grabbit browse --session <name> screenshot
     ```
 
-3.  **Generate**: Submit the capture with a **verbose, example-rich prompt**.
+3.  **Generate**: Submit with a **verbose, example-rich prompt**. The command prints a task ID — use it in the next step.
     ```bash
     grabbit save --session <name> "Detailed description. Example Input: 'X'. Example Output: { id: '123' }"
     ```
 
-4.  **Poll**: Wait for the result.
+4.  **Poll**: Use the task ID from `save`. When status is `completed`, the output includes a workflow ID for `grabbit add`.
     ```bash
     grabbit check <task-id>
     ```
 
-5.  **Integrate**: Install the workflow as a local skill or use API keys for cURL.
+5.  **Integrate**: After completion, use the workflow ID from the `check` output.
     ```bash
     grabbit add <workflow-id>
     grabbit skill install
     grabbit keys list
     grabbit keys show
     ```
-    Set the API key for tools/agents: `export GRABBIT_API_KEY="<your-key>"`
+    For tools/agents: `export GRABBIT_API_KEY="$(grabbit keys show)"` (or the token from `grabbit keys show`).
 
-6.  **List Workflows**: Find saved workflows.
+6.  **List Workflows**:
     ```bash
     grabbit workflows
     ```
 
 ## Critical Best Practices
 
-*   **Headed Mode**: Use `--headed` for sites with bot protection (Cloudflare, 403s) or when visual debugging is needed.
-*   **Snapshots**: Run `snapshot` frequently to get stable `@e#` references (e.g., `@e4`) instead of fragile CSS selectors.
-*   **API Keys**: Use `grabbit keys` to manage tokens for production integrations.
-*   **Prompting**: The backend agent needs **concrete examples** (strings seen on page, JSON shapes) to map HAR requests to workflow steps.
-    *   *Bad*: "Get prices."
-    *   *Good*: "Extract prices. Example: '$19.99'. Output: { price: number }."
+*   **Headed mode**: Add `--headed` to see the browser. Use it for bot protection (Cloudflare, 403s) or when debugging. Default is headless (no visible window).
+*   **Snapshots**: Run `snapshot` often. It prints element refs (`@e1`, `@e2`, …) — use those in `click`, `fill`, etc. instead of fragile CSS selectors.
+*   **Prompting**: Include concrete examples (strings you saw, JSON shape). *Bad*: "Get prices." *Good*: "Extract prices. Example: '$19.99'. Output: { price: number }."
 
 ## Common Errors
 
 *   **Unauthorized**: Run `grabbit auth`, then retry.
-*   **No active browser session**: Start with `grabbit browse --session <name> open <url>` before `grabbit save`.
-*   **No requests recorded**: Interact with the page, then `grabbit browse --session <name> snapshot`.
+*   **No active browser session**: Run `grabbit browse --session <name> open <url>` before `grabbit save`.
+*   **No requests recorded**: Interact with the page (click, type, navigate), then run `snapshot` and `save` again.
 
 ## Reference
 
-For the full list of commands (cookies, storage, network, advanced locators), see [cli_reference.md](references/cli_reference.md).
+For the full command list (cookies, storage, network, locators), see [cli_reference.md](references/cli_reference.md).
