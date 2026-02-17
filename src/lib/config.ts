@@ -46,6 +46,18 @@ export function clearConfig(): void {
   }
 }
 
+const PRODUCTION_API_URL = "https://www.grabbit.dev";
+
+function isLocalhost(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+  } catch {
+    return false;
+  }
+}
+
 export function getApiUrl(): string {
   // Priority: GRABBIT_API_URL env var > config file > default
   const envUrl = process.env.GRABBIT_API_URL;
@@ -55,10 +67,14 @@ export function getApiUrl(): string {
 
   const config = getConfig();
   if (config?.apiUrl) {
-    return config.apiUrl.replace(/\/+$/, "");
+    const url = config.apiUrl.replace(/\/+$/, "");
+    // Avoid using stale localhost from dev; fall back to production
+    if (!isLocalhost(url)) {
+      return url;
+    }
   }
 
-  return "https://www.grabbit.dev";
+  return PRODUCTION_API_URL;
 }
 
 export function getSession(): Session | null {
