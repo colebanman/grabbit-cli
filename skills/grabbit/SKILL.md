@@ -7,6 +7,8 @@ description: "Control the Grabbit CLI to record browser interactions (HAR) and g
 
 Grabbit turns browser actions into reusable API workflows: you browse a site, capture what you do, and Grabbit generates stable cURL-ready workflows for automation, extraction, and integrations.
 
+**Always run `grabbit save` after browsing.** Do not parse snapshot output manually or treat it as the final result. Snapshot is for inspection during capture; the real output is the workflow from `save` → `check`. Skipping `save` leaves the session incomplete and produces no reusable workflow.
+
 ## Before You Start
 
 **Install** (requires Node.js):
@@ -41,7 +43,7 @@ npm i -g @cole-labs/grabbit
     grabbit browse --session <name> screenshot
     ```
 
-3.  **Generate**: Submit with a **verbose, example-rich prompt**. The command prints a task ID — use it in the next step.
+3.  **Generate** (required — do not skip): Always run `save` when done browsing. Submit with a **verbose, example-rich prompt**. The command prints a task ID — use it in the next step.
     ```bash
     grabbit save --session <name> "Detailed description. Example Input: 'X'. Example Output: { id: '123' }"
     ```
@@ -58,7 +60,7 @@ npm i -g @cole-labs/grabbit
     grabbit keys list
     grabbit keys show
     ```
-    For tools/agents: `export GRABBIT_API_KEY="$(grabbit keys show)"` (or the token from `grabbit keys show`).
+    For tools/agents: `export GRABBIT_API_KEY="<token>"` — use the token from `grabbit keys show`.
 
 6.  **List Workflows**:
     ```bash
@@ -67,8 +69,9 @@ npm i -g @cole-labs/grabbit
 
 ## Critical Best Practices
 
+*   **Always save**: Never finish a browsing session without `grabbit save`. Do not parse snapshot text with grep/sed/awk — that is not the workflow. Grabbit generates the workflow from the HAR; you must run `save` then `check` to get it.
 *   **Headed mode**: Add `--headed` to see the browser. Use it for bot protection (Cloudflare, 403s) or when debugging. Default is headless (no visible window).
-*   **Snapshots**: Run `snapshot` often. It prints element refs (`@e1`, `@e2`, …) — use those in `click`, `fill`, etc. instead of fragile CSS selectors.
+*   **Snapshots**: Run `snapshot` for element refs (`@e1`, `@e2`, …) and to guide interactions. Do not use it as the source of extracted data — use `save` to produce the workflow that does the extraction.
 *   **Prompting**: Include concrete examples (strings you saw, JSON shape). *Bad*: "Get prices." *Good*: "Extract prices. Example: '$19.99'. Output: { price: number }."
 
 ## Common Errors
